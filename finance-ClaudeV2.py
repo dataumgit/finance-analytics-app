@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import tkinter as tk
 from tkinter import ttk
+import sys  # 用于退出程序
 
 import matplotlib
 matplotlib.use('TkAgg')  # 强制使用 TkAgg 后端
@@ -202,6 +203,10 @@ class FinancialAnalyticsApp:
         self.stock_data = None
         self.loading = False
 
+
+        # Set up the window close protocol
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
         # Create fonts
         self.title_font = font.Font(family="Arial", size=14, weight="bold")
         self.header_font = font.Font(family="Arial", size=12, weight="bold")
@@ -219,6 +224,13 @@ class FinancialAnalyticsApp:
 
         # Preload default stock data
         self.preload_default_stock()
+
+    def on_close(self):
+        """Handle window close event to terminate all threads and processes immediately."""
+        print("Closing the application...")
+
+        # Directly exit the program
+        sys.exit()
 
     def setup_styles(self):
         # Configure ttk styles
@@ -429,19 +441,6 @@ class FinancialAnalyticsApp:
             key = label_text.lower().replace(" ", "").replace(":", "")
             self.stock_info[key] = ttk.Label(sub_frame, text="--", font=('Arial', 12), style="StockInfo.TLabel")
             self.stock_info[key].pack(anchor=tk.W)
-
-    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-    import tkinter as tk
-
-    import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-    import tkinter as tk
-    from tkinter import ttk
-
-    import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-    import tkinter as tk
-    from tkinter import ttk
 
     def create_price_chart_card(self, parent):
         # Chart card
