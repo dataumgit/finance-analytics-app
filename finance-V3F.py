@@ -8,7 +8,7 @@ import matplotlib.dates as mdates
 import traceback
 import time
 import matplotlib.pyplot as plt
-import self
+#import self
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import tkinter as tk
 from tkinter import ttk
@@ -16,25 +16,12 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import tkinter as tk
 from tkinter import ttk
-import sys  # 用于退出程序
+import sys
 
 import matplotlib
 matplotlib.use('TkAgg')  # 强制使用 TkAgg 后端
 
 # Define color scheme for financial app
-# COLORS = {
-#     "bg_dark": "#E8EEF4",  # Light blue-gray background
-#     "bg_medium": "#FFFFFF",  # White for panels
-#     "bg_light": "#FFFFFF",  # White for inputs
-#     "text": "#333333",  # Dark gray text
-#     "accent": "#3498DB",  # Blue accent for buttons
-#     "positive": "#27AE60",  # Green for positive values
-#     "negative": "#E74C3C",  # Red for negative values
-#     "neutral": "#F39C12",  # Orange for neutral/warning
-#     "header": "#2C3E50",  # Dark blue for headers
-#     "border": "#BDC3C7",  # Light gray for borders
-# }
-
 COLORS = {
     "bg_dark": "#2C3E50",  # 深灰蓝色背景
     "bg_medium": "#FFFFFF",  # 白色背景
@@ -52,31 +39,20 @@ COLORS = {
 STOCK_DATA_CACHE = {}
 
 # Sample stock list (company name and ticker)
-# STOCKS = [
-#     ("Apple Inc.", "AAPL"),
-#     ("Microsoft Corporation", "MSFT"),
-#     ("Alphabet Inc.", "GOOGL"),
-#     ("Amazon.com Inc.", "AMZN"),
-#     ("Meta Platforms Inc.", "META"),
-#     ("Tesla Inc.", "TSLA"),
-#     ("NVIDIA Corporation", "NVDA"),
-#     ("JPMorgan Chase & Co.", "JPM"),
-#     ("Bank of America Corp.", "BAC"),
-#     ("Visa Inc.", "V")
-# ]
-
 STOCKS = [
-    ("AAPL", "Apple Inc."),
-    ("AMZN", "Amazon.com Inc."),
-    ("BAC", "Bank of America Corp."),
-    ("GOOGL", "Alphabet Inc."),
-    ("JPM", "JPMorgan Chase & Co."),
-    ("META", "Meta Platforms Inc."),
-    ("MSFT", "Microsoft Corporation"),
-    ("NVDA", "NVIDIA Corporation"),
-    ("TSLA", "Tesla Inc."),
-    ("V", "Visa Inc.")
+    ("Apple Inc.", "AAPL"),
+    ("Microsoft Corporation", "MSFT"),
+    ("Alphabet Inc.", "GOOGL"),
+    ("Amazon.com Inc.", "AMZN"),
+    ("Meta Platforms Inc.", "META"),
+    ("Tesla Inc.", "TSLA"),
+    ("NVIDIA Corporation", "NVDA"),
+    ("JPMorgan Chase & Co.", "JPM"),
+    ("Bank of America Corp.", "BAC"),
+    ("Visa Inc.", "V")
 ]
+STOCKS = sorted(STOCKS, key=lambda x: x[0][0])
+
 
 # Default stock to show on startup
 DEFAULT_STOCK = "AAPL"
@@ -136,6 +112,49 @@ def generate_stock_data(ticker, days=180):
         empty_data = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume'])
         return empty_data
 
+# Get stock data from xlsx_file with error handling
+excel_filename = "stocks_data.xlsx"
+def get_stock_data_from_xlsx(ticker, days=180):
+    try:
+        # Check cache first
+        if ticker in STOCK_DATA_CACHE:
+            return STOCK_DATA_CACHE[ticker]
+
+        xlsx_data = pd.read_excel(excel_filename, sheet_name=ticker)
+
+        # Generate dates
+        end_date = datetime.strptime('2025-04-30', '%Y-%m-%d')
+        start_date = end_date - timedelta(days=days)
+        date_range = pd.bdate_range(start_date, end_date)
+
+        tail_rows = xlsx_data.tail(len(date_range))
+        close_data = tail_rows['Close'].astype(float).round(2)
+        # print(close_data)
+
+        # Create dataframe
+        data = pd.DataFrame(index=date_range)
+
+        data['Date'] = date_range
+        data['Close'] = tail_rows['Close'].astype(float).round(2).values
+        data['Open'] = tail_rows['Open'].astype(float).round(2).values
+        data['High'] = tail_rows['High'].astype(float).round(2).values
+        data['Low'] = tail_rows['Low'].astype(float).round(2).values
+
+        # Ensure High >= Open, Close and Low <= Open, Close
+        data['High'] = np.maximum(data['High'], np.maximum(data['Open'], data['Close']))
+        data['Low'] = np.minimum(data['Low'], np.minimum(data['Open'], data['Close']))
+
+        # Generate volume
+        data['Volume'] = tail_rows['Volume'].astype('int32').values
+        # print(data)
+        # Store in cache
+        STOCK_DATA_CACHE[ticker] = data
+        return data
+    except Exception as e:
+        print(f"Error generating stock data: {e}")
+        # Return empty dataframe with same structure in case of error
+        empty_data = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume'])
+        return empty_data
 
 # Technical indicators
 def calculate_sma(data, period=10):
@@ -216,7 +235,6 @@ class FinancialAnalyticsApp:
         self.stock_data = None
         self.loading = False
 
-
         # Set up the window close protocol
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -241,7 +259,6 @@ class FinancialAnalyticsApp:
     def on_close(self):
         """Handle window close event to terminate all threads and processes immediately."""
         print("Closing the application...")
-
         # Directly exit the program
         sys.exit()
 
@@ -307,7 +324,6 @@ class FinancialAnalyticsApp:
         # Show default section
         self.show_section("overview")
 
-    # Stock selection card
     def create_stock_selection_card(self, parent):
         # Stock selection card
         card = ttk.Frame(parent, style="Card.TFrame")
@@ -326,7 +342,7 @@ class FinancialAnalyticsApp:
         # Combobox for stock selection
         self.stock_var = tk.StringVar()
         self.stock_combo = ttk.Combobox(content, textvariable=self.stock_var, state="readonly", width=30)
-        stock_options = [f"{ticker} | {name}" for ticker,name in STOCKS]
+        stock_options = [f"{name} | {ticker}" for name, ticker in STOCKS]
         self.stock_combo['values'] = stock_options
         self.stock_combo.pack(fill=tk.X)
         self.stock_combo.bind("<<ComboboxSelected>>", self.on_stock_selected)
@@ -454,6 +470,19 @@ class FinancialAnalyticsApp:
             key = label_text.lower().replace(" ", "").replace(":", "")
             self.stock_info[key] = ttk.Label(sub_frame, text="--", font=('Arial', 12), style="StockInfo.TLabel")
             self.stock_info[key].pack(anchor=tk.W)
+
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+    import tkinter as tk
+
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+    import tkinter as tk
+    from tkinter import ttk
+
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+    import tkinter as tk
+    from tkinter import ttk
 
     def create_price_chart_card(self, parent):
         # Chart card
@@ -614,7 +643,8 @@ class FinancialAnalyticsApp:
         """Background task to preload stock data"""
         try:
             # Generate data for default stock
-            generate_stock_data(DEFAULT_STOCK)
+            # generate_stock_data(DEFAULT_STOCK)
+            get_stock_data_from_xlsx(DEFAULT_STOCK)
 
             # Set the default stock in the UI
             self.root.after(500, self.set_default_stock)
@@ -625,7 +655,7 @@ class FinancialAnalyticsApp:
     def set_default_stock(self):
         """Set the default stock in the UI"""
         # Find the stock option with the default ticker
-        for i, (ticker, name) in enumerate(STOCKS):
+        for i, (name, ticker) in enumerate(STOCKS):
             if ticker == DEFAULT_STOCK:
                 self.stock_combo.current(i)
                 self.on_stock_selected(None)
@@ -664,31 +694,32 @@ class FinancialAnalyticsApp:
             time.sleep(0.1)  # Small delay to ensure loading indicator appears
 
             # Parse company name and ticker
-            ticker,company = selected.split(" | ")
+            company, ticker = selected.split(" | ")
 
             # Generate data
             self.current_stock = ticker
-            self.stock_data = generate_stock_data(ticker)
+            #self.stock_data = generate_stock_data(ticker)
+            self.stock_data = get_stock_data_from_xlsx(ticker)
 
             # Update UI in main thread
-            self.root.after(0, lambda: self.update_ui(ticker,company))
+            self.root.after(0, lambda: self.update_ui(company, ticker))
         except Exception as e:
             print(f"Error loading stock data: {e}")
             traceback.print_exc()
             self.root.after(0, self.hide_loading)
 
-    def update_ui(self, ticker, company):
+    def update_ui(self, company, ticker):
         """Update UI with loaded stock data (called in main thread)"""
         try:
             # Basic stock info
-            self.update_stock_info(ticker,company)
+            self.update_stock_info(company, ticker)
 
             # Update current view
-            if self.current_view == "📊 Overview":
+            if self.current_view == "overview":
                 self.update_price_chart()
-            elif self.current_view == "📅 Historical Data":
+            elif self.current_view == "historical":
                 self.update_historical_data()
-            elif self.current_view == "💡 Investment Recommendation":
+            elif self.current_view == "recommendation":
                 self.update_recommendation()
         finally:
             # Hide loading indicator
